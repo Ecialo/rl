@@ -1,3 +1,7 @@
+import numpy
+from itertools import product
+
+
 def estimate(pi, S, Sp, R, A, theta=0.01, gamma=0.9):
     V = {}
     for s in Sp:
@@ -19,4 +23,5 @@ def estimate(pi, S, Sp, R, A, theta=0.01, gamma=0.9):
 
 def test():
     A = {'up', 'down', 'left', 'right'}
-
+    Sp = {(i, j) for i, j in product(range(4), range(4))}
+    S = Sp - {(0, 0), (3, 3)}
