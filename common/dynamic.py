@@ -85,7 +85,7 @@ class Strategy:
         return self._s.items()
 
 
-def strategy_iteration(R, A, S, Sp, P):
+def strategy_iteration(R, A, S, Sp, P, gamma=1.0):
     V = {}
     pi = Strategy(A)
     i = 0
@@ -94,8 +94,8 @@ def strategy_iteration(R, A, S, Sp, P):
         # det strategy ruins everything
         # pi[s] = choice(A)
     while True:
-        V = estimate(pi, S, Sp, R, A, P, V)
-        is_stable, pi = improve(pi, S, A, P, R, V)
+        V = estimate(pi, S, Sp, R, A, P, V,  gamma=gamma)
+        is_stable, pi = improve(pi, S, A, P, R, V, gamma=gamma)
         print(i)
         if is_stable:
             # print(pi._s)
