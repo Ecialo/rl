@@ -17,12 +17,14 @@ def estimate(pi, S, Sp, R, A, P, V, theta=0.01, gamma=1.0):
             v = V[s]
             sum_ = 0.0
             for a in A:
+                print(a)
                 for ss in Sp:
+                    # print(ss)
                     sum_ += pi[(s, a)] * P(s, a, ss) * (R[(s, a, ss)] + gamma * V[ss])
             V[s] = sum_
             # print(s, v, V[s])
             d = max(d, abs(v - V[s]))
-        # print(i, d)
+        print(i, d)
         i += 1
         if d < theta:
             break
@@ -94,7 +96,9 @@ def strategy_iteration(R, A, S, Sp, P, gamma=1.0):
         # det strategy ruins everything
         # pi[s] = choice(A)
     while True:
+        print("estimate")
         V = estimate(pi, S, Sp, R, A, P, V,  gamma=gamma)
+        print("improve")
         is_stable, pi = improve(pi, S, A, P, R, V, gamma=gamma)
         print(i)
         if is_stable:
