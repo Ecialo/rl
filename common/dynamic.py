@@ -2,11 +2,71 @@ from collections import defaultdict
 from itertools import product
 from random import choice
 
-import numpy
+import numpy as np
+
+from .agent import Agent
 
 
 def argmax(f, args):
     return max(args, key=f)
+
+
+class DPAgent(Agent):
+
+    def __init__(self, env, gamma=0.9):
+        self.env = env
+        self.gamma = gamma
+
+        self.num_states = env.get_num_states()
+        self.sids = list(range(self.num_states))
+
+        self.V = None
+        self.pi = None
+
+        self.reset()
+
+    def reset(self):
+        self.V = np.zeros(self.num_states)
+        self.pi = np.array([self.action_ids(s) for s in self.sids])
+
+    def action_ids(self, s):
+        return self.env.get_allowed_action_ids(s)[0]
+
+    def estimate(self, cutoff=100):
+        for i in range(cutoff):
+            d = 0.0
+            for sid in self.sids:
+                v = self.V[sid]
+                sum_ = 0.0
+                aid = self.pi[sid]
+                for spid, prob in self.env.next_state_distrib(sid, aid):
+                    sum_ += prob*(self.env.get_reward(sid, aid, spid) + self.gamma*self.V[spid])
+                self.V[sid] = sum_
+                d = max(d, abs(v - self.V[sid]))
+            if d < 0.1:
+                break
+
+    def improve(self, cutoff=100):
+        for i in range(cutoff):
+            is_stable = True
+            for sid in self.sids:
+                vals = []
+                for aid in self.env.allowed_actions(sid):
+                    val = 0
+                    for spid, prob in self.env.next_state_distrib(sid, aid):
+                        val += prob*(self.env.get_reward(sid, aid, spid) + self.gamma*self.V[spid])
+                    vals.append((aid, val))
+                best_aid = max(vals, key=lambda x: x[1])[0]
+                if self.pi[sid] != best_aid:
+                    self.pi[sid] = best_aid
+                    is_stable = False
+            if is_stable:
+                break
+
+    def policy_iteration(self, num_iter=1):
+        for i in range(num_iter):
+            self.estimate()
+            self.improve()
 
 
 def estimate(pi, S, Sp, R, A, P, V, theta=0.01, gamma=1.0):
@@ -155,7 +215,7 @@ def test():
         V[s] = 0.0
     V_res = estimate(pi, S, Sp, R, A, P, V, theta=0.001, gamma=1.0)
 
-    V = numpy.ndarray((4, 4))
+    V = np.ndarray((4, 4))
     for s, v in V_res.items():
         V[s] = v
     print(V)
