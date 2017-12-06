@@ -17,7 +17,7 @@ class DPAgent(Agent):
         self.env = env
         self.gamma = gamma
 
-        self.num_states = env.get_num_states()
+        self.num_states = env.num_states
         self.sids = list(range(self.num_states))
 
         self.V = None
@@ -26,23 +26,29 @@ class DPAgent(Agent):
         self.reset()
 
     def reset(self):
-        self.V = np.zeros(self.num_states)
+        # self.V = np.zeros(self.num_states)
+        self.V = defaultdict(float)
+        # self.pi = np.array([self.action_ids(s) for s in self.sids])
         self.pi = np.array([self.action_ids(s) for s in self.sids])
 
     def action_ids(self, s):
-        return self.env.get_allowed_action_ids(s)[0]
+        return self.env.allowed_actions(s)[0]
 
     def estimate(self, cutoff=100):
         for i in range(cutoff):
             d = 0.0
-            for sid in self.sids:
-                v = self.V[sid]
+            for state in self.sids:
+                v = self.V[state]
                 sum_ = 0.0
-                aid = self.pi[sid]
-                for spid, prob in self.env.next_state_distrib(sid, aid):
-                    sum_ += prob*(self.env.get_reward(sid, aid, spid) + self.gamma*self.V[spid])
-                self.V[sid] = sum_
-                d = max(d, abs(v - self.V[sid]))
+                action = self.pi[state]
+                for end_state, prob in self.env.state_distribution(state, action):
+                    # print(spid, prob)
+                    sum_ += prob*(self.env.reward(state, action, end_state) + self.gamma*self.V[end_state])
+                # print(sum_)
+                self.V[state] = sum_
+                print(v, self.V[state], sum_)
+                d = max(d, abs(v - self.V[state]))
+            # print(d)
             if d < 0.1:
                 break
 
@@ -53,8 +59,8 @@ class DPAgent(Agent):
                 vals = []
                 for aid in self.env.allowed_actions(sid):
                     val = 0
-                    for spid, prob in self.env.next_state_distrib(sid, aid):
-                        val += prob*(self.env.get_reward(sid, aid, spid) + self.gamma*self.V[spid])
+                    for spid, prob in self.env.state_distribution(sid, aid):
+                        val += prob*(self.env.reward(sid, aid, spid) + self.gamma*self.V[spid])
                     vals.append((aid, val))
                 best_aid = max(vals, key=lambda x: x[1])[0]
                 if self.pi[sid] != best_aid:
