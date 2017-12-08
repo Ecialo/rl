@@ -5,6 +5,7 @@ from operator import mul
 from math import *
 
 from scipy.stats import poisson as poi
+import numpy as np
 
 poisson = poi.pmf
 
@@ -66,20 +67,21 @@ class Rental(Environment):
 
         self.pre = self.precalc()
 
-    def allowed_actions(self, state_id):
-        s0, s1 = self.states[state_id]
+    def allowed_actions(self, state):
+        # s0, s1 = self.states[state_id]
+        s0, s1 = state
         t1to2 = min(self.max_trans, s0)
         t2to1 = max(-self.max_trans, -s1)
         actions = list(range(t2to1, t1to2 + 1))
-        aids = [i + self.max_trans for i in actions]
+        # aids = [i + self.max_trans for i in actions]
         # print(aids)
-        return aids
+        return actions
 
-    def reward(self, state_id, action_id, next_state_id):
-        return self.pre['r'][(state_id, action_id)][next_state_id]
+    def reward(self, state, action, next_state):
+        return self.pre['r'][(state, action)][next_state]
 
-    def state_distribution(self, state_id, action_id):
-        return list(self.pre['p'][(state_id, action_id)].items())
+    def state_distribution(self, state, action):
+        return list(self.pre['p'][(state, action)].items())
 
     def precalc(self):
         r1 = self.rewards_and_probs(self.mu_need_1, self.mu_ret_1)
@@ -88,13 +90,13 @@ class Rental(Environment):
             'r': {},
             'p': {},
         }
-        for sid in range(self.num_states):
-            state = self.states[sid]
+        for state in self.states:
+            # state = self.states[sid]
             s0, s1 = state
-            for aid in self.allowed_actions(sid):
-                action = self.actions[aid]
-                r = result['r'][(sid, aid)] = defaultdict(float)
-                p = result['p'][(sid, aid)] = defaultdict(float)
+            for action in self.allowed_actions(state):
+                # action = self.actions[aid]
+                r = result['r'][(state, action)] = defaultdict(float)
+                p = result['p'][(state, action)] = defaultdict(float)
                 cost = self.cost_per_car_trans * abs(action)
                 n_beg_1 = s0 - action
                 n_beg_2 = s1 + action
@@ -103,13 +105,13 @@ class Rental(Environment):
                     for n_end2 in range(self.max_car + 1):
                         sp1, sp2 = n_end1, n_end2
                         next_state = (sp1, sp2)
-                        spid = self.states.index(next_state)
-                        p1 = r1['p'][(n_beg_1, n_beg_2)]
-                        p2 = r2['p'][(n_beg_2, n_beg_2)]
-                        re1 = r2['r'][(n_beg_2, n_beg_2)]
-                        re2 = r2['r'][(n_beg_2, n_beg_2)]
-                        r[spid] += p1*p2*(cost + re1 + re2)
-                        p[spid] += p1*p2
+                        # spid = self.states.index(next_state)
+                        p1 = r1['p'][(n_beg_1, n_end1)]
+                        p2 = r2['p'][(n_beg_2, n_end2)]
+                        re1 = r1['r'][(n_beg_1, n_end1)]
+                        re2 = r2['r'][(n_beg_2, n_end2)]
+                        r[next_state] += p1*p2*(cost + re1 + re2)
+                        p[next_state] += p1*p2
         return result
 
     def rewards_and_probs(self, mu_need, mu_ret):
@@ -209,9 +211,18 @@ if __name__ == '__main__':
     env = Rental(
         3, 4,
         3, 2,
-        -2, 10,
-        7, 5
+        -MOVE_COST, CAR_COST,
+        MAX_CARS, 5
     )
-    a = DPAgent(env)
-    a.policy_iteration(20)
-    print(a.V)
+    ag = DPAgent(env)
+    ag.policy_iteration(5)
+    # print(ag.V)
+    # result_table = [[None for _ in range(MAX_CARS + 1)] for _ in range(MAX_CARS + 1)]
+    result_table = np.zeros((MAX_CARS + 1, MAX_CARS + 1))
+    for s, a in ag.pi.items():
+        y, x = s
+        result_table[x][y] = a
+    print(result_table)
+    # for row in result_table:
+    #     print(row)
+        # print(["{}".format(ch) for ch in row])
